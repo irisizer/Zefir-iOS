@@ -54,8 +54,8 @@ private fun DrawScope.drawScallop(color: Color, lobes: Int) {
 
 /** Маленький «лист»/капля внутри значка (как в оригинале). */
 @Composable
-fun ZefirLeaves(color: Color, size: Dp = 64.dp) {
-    Canvas(Modifier.size(size)) {
+fun ZefirLeaves(color: Color, size: Dp = 64.dp, modifier: Modifier = Modifier) {
+    Canvas(modifier.size(size)) {
         val w = this.size.width
         val h = this.size.height
         drawRoundRect(

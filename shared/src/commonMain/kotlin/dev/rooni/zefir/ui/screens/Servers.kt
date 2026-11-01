@@ -215,7 +215,11 @@ private fun EmptyServers(controller: AppController, onAdd: () -> Unit) {
                 Text(
                     controller.s("servers_add"),
                     color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
         }

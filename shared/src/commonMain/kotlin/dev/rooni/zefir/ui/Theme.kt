@@ -16,8 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.materialkolor.PaletteStyle
-import com.materialkolor.dynamicColorScheme
 import dev.rooni.zefir.model.AppSettings
 import dev.rooni.zefir.model.ThemeMode
 import dev.rooni.zefir.platform.Platform
@@ -44,10 +42,7 @@ val MultiPalettes: List<List<Long>> = listOf(
     listOf(4289533015L, 4286470082L, 4293673082L, 4284246976L, 4289415100L),
 )
 
-private fun singleHue(seed: Long, dark: Boolean): ColorScheme {
-    val color = Color(seed.toULong())
-    return dynamicColorScheme(color, dark, style = PaletteStyle.Fidelity)
-}
+private fun singleHue(seed: Long, dark: Boolean): ColorScheme = TonalScheme.singleHue(seed, dark)
 
 private fun tint(scheme: ColorScheme) = IconTint(
     icon = scheme.primary,
@@ -112,6 +107,8 @@ fun AppTheme(settings: AppSettings, platform: Platform, content: @Composable () 
     val base = system ?: generated?.first ?: if (dark) darkColorScheme() else lightColorScheme()
     val scheme = if (dark && settings.amoled) base.amoled() else base
     val tints = if (system != null) listOf(tint(system)) else generated?.second ?: listOf(tint(scheme))
+
+    println("ZEFIR theme: accent=${settings.accent} dark=$dark primary=${scheme.primary} surface=${scheme.surface} container=${scheme.surfaceContainer}")
 
     CompositionLocalProvider(LocalIconTints provides tints) {
         MaterialExpressiveTheme(

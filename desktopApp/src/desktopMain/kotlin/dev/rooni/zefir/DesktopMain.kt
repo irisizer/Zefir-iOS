@@ -10,7 +10,7 @@ import dev.rooni.zefir.platform.DesktopPlatform
 import kotlinx.coroutines.MainScope
 
 fun main() = application {
-    val platform = DesktopPlatform()
+    val platform = DesktopPlatform(java.io.File(System.getProperty("user.home"), ".zefir-ios"))
     val controller = AppController(platform, MainScope())
     Window(
         onCloseRequest = ::exitApplication,

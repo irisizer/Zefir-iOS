@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.rooni.zefir.app.AppController
 import dev.rooni.zefir.ui.ZefirBadge
+import dev.rooni.zefir.ui.ZefirLeaves
 
 /**
  * Онбординг (ui/screens/Onboarding.kt): 3 шага — приветствие, добавление подписки, готово.
@@ -55,7 +56,7 @@ fun OnboardingScreen(controller: AppController) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             when (step) {
                 0 -> StepContent(
-                    icon = null,
+                    mark = true,
                     title = controller.s("ob_welcome_title"),
                     text = controller.s("ob_welcome_text"),
                 )
@@ -126,13 +127,23 @@ private fun StepProgress(step: Int, steps: Int, modifier: Modifier = Modifier) {
 
 @Composable
 private fun StepContent(
-    icon: Boolean?,
+    icon: Boolean? = null,
     title: String,
     text: String,
     done: Boolean = false,
+    mark: Boolean = false,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        if (icon != null) {
+        if (mark) {
+            androidx.compose.foundation.layout.Box {
+                ZefirBadge(size = 160.dp, modifier = Modifier.padding(bottom = 36.dp))
+                dev.rooni.zefir.ui.ZefirLeaves(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    size = 66.dp,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
+        } else if (icon != null) {
             ZefirBadge(
                 size = 160.dp,
                 icon = if (done) Icons.Rounded.Check else Icons.Rounded.Link,
