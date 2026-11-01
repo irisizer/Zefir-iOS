@@ -23,6 +23,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.irisizer.zefir
         PRODUCT_NAME: Zefir
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: Sources/Info.plist
         FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/Frameworks
         OTHER_LDFLAGS: $(inherited) -framework Shared -lsqlite3
