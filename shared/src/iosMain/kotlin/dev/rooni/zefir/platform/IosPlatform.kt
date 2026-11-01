@@ -38,9 +38,12 @@ class IosPlatform : Platform {
         defaults.setObject(json.encodeToString(settings), KEY_SETTINGS)
     }
 
-    override fun loadProfiles(): List<Profile> = runCatching {
-        defaults.stringForKey(KEY_PROFILES)?.let { json.decodeFromString<List<Profile>>(it) }
-    }.getOrDefault(emptyList())
+    override fun loadProfiles(): List<Profile> {
+        val raw = runCatching {
+            defaults.stringForKey(KEY_PROFILES)?.let { json.decodeFromString<List<Profile>>(it) }
+        }.getOrNull()
+        return raw ?: emptyList()
+    }
 
     override fun saveProfiles(profiles: List<Profile>) {
         defaults.setObject(json.encodeToString(profiles), KEY_PROFILES)

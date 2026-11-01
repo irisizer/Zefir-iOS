@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -46,7 +47,7 @@ private fun DrawScope.drawScallop(color: Color, lobes: Int) {
     val ring = r - lobeR
     drawCircle(color, radius = ring * 0.92f, center = center)
     for (i in 0 until lobes) {
-        val angle = (2.0 * Math.PI * i / lobes).toFloat()
+        val angle = (2.0 * PI * i / lobes).toFloat()
         val c = Offset(center.x + ring * cos(angle), center.y + ring * sin(angle))
         drawCircle(color, radius = lobeR, center = c)
     }
