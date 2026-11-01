@@ -22,6 +22,12 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <!-- Compose Multiplatform требует этот ключ: иначе PlistSanityCheck
+         вызывает error() и приложение падает при старте. -->
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
     <key>UILaunchScreen</key>
     <dict>
         <key>UIColorName</key>
