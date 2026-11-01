@@ -1,0 +1,68 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Build Kotlin/Compose framework (iosArm64)
+        run: |
+          chmod +x gradlew
+          ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon --stacktrace
+
+      - name: Copy framework into Xcode project
+        run: |
+          mkdir -p iosApp/Frameworks
+          rm -rf iosApp/Frameworks/Shared.framework
+          cp -R shared/build/bin/iosArm64/releaseFramework/Shared.framework iosApp/Frameworks/
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cd iosApp
+          xcodegen generate
+
+      - name: Build unsigned app
+        run: |
+          cd iosApp
+          xcodebuild -project Zefir.xcodeproj \
+            -scheme Zefir \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package into .ipa
+        run: |
+          cd iosApp
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          echo "App: $APP"
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          cd dist
+          zip -qry Zefir.ipa Payload
+          ls -la Zefir.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zefir-ipa
+          path: iosApp/dist/Zefir.ipa
+          if-no-files-found: error
