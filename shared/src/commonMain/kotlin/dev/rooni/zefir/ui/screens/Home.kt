@@ -53,7 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.rooni.zefir.app.AppController
-import dev.rooni.zefir.app.nowMillis
+import dev.rooni.zefir.platform.nowMillis
 import dev.rooni.zefir.model.HomeWidget
 import dev.rooni.zefir.model.ProxyNode
 import dev.rooni.zefir.model.Tab

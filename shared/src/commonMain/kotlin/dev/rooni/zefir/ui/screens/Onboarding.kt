@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import dev.rooni.zefir.app.AppController
 import dev.rooni.zefir.ui.ActionButton
 import dev.rooni.zefir.ui.AppTextField
-import dev.rooni.zefir.ui.BrandMark
 import dev.rooni.zefir.ui.MessageBanner
 import dev.rooni.zefir.ui.SubScreen
 

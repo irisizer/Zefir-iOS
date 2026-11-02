@@ -13,10 +13,8 @@ import io.ktor.client.request.get
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSDate
-import platform.Foundation.NSURL
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.timeIntervalSince1970
-import platform.UIKit.UIApplication
 import platform.UIKit.UIDevice
 import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle
@@ -75,10 +73,7 @@ class IosPlatform : Platform {
     }
 
     override fun openUrl(url: String) {
-        runCatching {
-            val nsUrl = NSURL.URLWithString(url) ?: return
-            UIApplication.sharedApplication.openURL(nsUrl, emptyMap<Any?, Any?>(), null)
-        }
+        // Внешние ссылки открываются из Swift-обёртки, если понадобятся.
     }
 
     override fun deviceModel(): String = UIDevice.currentDevice.model
@@ -147,5 +142,3 @@ interface TunnelHandler {
     fun stop(): Result<Unit>
     fun traffic(): Traffic
 }
-
-actual fun createHttpClient(): HttpClient = HttpClient(Darwin)

@@ -7,8 +7,6 @@ import dev.rooni.zefir.model.Profile
 import dev.rooni.zefir.model.Traffic
 import dev.rooni.zefir.model.TunnelOptions
 import dev.rooni.zefir.model.TunnelState
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -140,12 +138,4 @@ class DesktopPlatform(private val dir: File) : Platform {
 
     @Composable
     override fun systemColorScheme(dark: Boolean): ColorScheme? = null
-}
-
-actual fun createHttpClient(): HttpClient = HttpClient(OkHttp) {
-    engine {
-        config {
-            followRedirects(true)
-        }
-    }
 }
