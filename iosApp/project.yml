@@ -1,0 +1,34 @@
+name: Zefir
+options:
+  bundleIdPrefix: com.irisizer
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: 1.1.5
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_VERSION: "5.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGNING_ALLOWED: NO
+
+targets:
+  Zefir:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.irisizer.zefir
+        PRODUCT_NAME: Zefir
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: Sources/Info.plist
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(SRCROOT)/Frameworks
+        OTHER_LDFLAGS: $(inherited) -framework Shared
+        LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks
+    dependencies:
+      - framework: Frameworks/Shared.framework
+        embed: false
+        link: true

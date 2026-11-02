@@ -1,0 +1,11 @@
+.gradle/
+build/
+*/build/
+.kotlin/
+local.properties
+*.hprof
+.DS_Store
+iosApp/Frameworks/
+iosApp/Zefir.xcodeproj/
+iosApp/build/
+iosApp/dist/
