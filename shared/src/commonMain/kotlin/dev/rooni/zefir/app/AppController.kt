@@ -63,7 +63,11 @@ class AppController(
     val language: String get() = settings.language
 
     fun s(key: String): String =
-        Strings.all[language]?.get(key) ?: Strings.ru[key] ?: key
+        Strings.extra[key]?.get(language)
+            ?: Strings.all[language]?.get(key)
+            ?: Strings.extra[key]?.get("ru")
+            ?: Strings.ru[key]
+            ?: key
 
     fun sf(key: String, vararg args: Any?): String = Strings.format(s(key), *args)
 

@@ -479,8 +479,11 @@ private fun PingBadge(controller: AppController, node: ProxyNode) {
     }
     Surface(shape = RoundedCornerShape(50), color = color.copy(alpha = 0.14f)) {
         Text(
-            text = if (controller.pings.containsKey(node.name) && ping == null) controller.s("servers_dead")
-            else controller.sf("servers_ms", ping ?: 0),
+            text = when {
+                controller.pings.containsKey(node.name) && ping == null -> controller.s("servers_dead")
+                ping == null -> "—"
+                else -> controller.sf("servers_ms", ping)
+            },
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium,
             color = color,

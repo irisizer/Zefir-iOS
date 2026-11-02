@@ -68,15 +68,15 @@ import dev.rooni.zefir.ui.screens.SettingsHubScreen
 import dev.rooni.zefir.ui.screens.WidgetsScreen
 
 @Composable
-fun ZefirApp(controller: AppController) {
+fun ZefirApp(controller: AppController, initialTab: Tab = Tab.Home) {
     AppTheme(controller.settings, controller.platform) {
-        MainFlow(controller)
+        MainFlow(controller, initialTab)
     }
 }
 
 @Composable
-fun MainFlow(controller: AppController) {
-    val navigator = remember { Navigator { controller.tab = it } }
+fun MainFlow(controller: AppController, initialTab: Tab = Tab.Home) {
+    val navigator = remember { Navigator({ controller.tab = it }, initialTab) }
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(controller.message) {

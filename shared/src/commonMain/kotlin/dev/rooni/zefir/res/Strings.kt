@@ -64,6 +64,14 @@ object Strings {
         "ru" to "Русский", "en" to "English", "be" to "Беларуская", "uk" to "Українська", "zh" to "中文",
     )
 
+    /** Строки, которых нет в APK 1.1.5, но нужны порту. */
+    val extra: Map<String, Map<String, String>> = mapOf(
+        "extra_expired" to mapOf(
+            "ru" to "срок истёк", "en" to "expired",
+            "be" to "тэрмін скончыўся", "uk" to "термін минув", "zh" to "已过期",
+        ),
+    )
+
     private fun parse(raw: String): Map<String, String> {
         val map = HashMap<String, String>(512)
         raw.split('\u0002').forEach { entry ->

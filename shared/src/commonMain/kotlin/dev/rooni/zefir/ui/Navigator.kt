@@ -31,10 +31,10 @@ sealed interface Route {
 }
 
 /** Стек навигации + выбранная вкладка (ui/Navigator.kt). */
-class Navigator(private val onTabChange: (Tab) -> Unit) {
+class Navigator(private val onTabChange: (Tab) -> Unit, initialTab: Tab = Tab.Home) {
     val stack = mutableStateListOf<Route>(Route.Tabs)
     val reselects = mutableStateMapOf<Tab, Int>()
-    var tab by mutableStateOf(Tab.Home)
+    var tab by mutableStateOf(initialTab)
         private set
 
     val current: Route get() = stack.last()

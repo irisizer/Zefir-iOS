@@ -417,7 +417,7 @@ private fun SubscriptionBody(controller: AppController) {
         Text(
             text = if (profile.expire > 0) {
                 val days = ((profile.expire * 1000) - nowMillis()) / 86_400_000
-                controller.sf("stat_days", days.coerceAtLeast(0)) + " · " + controller.s("stat_left")
+                if (days < 0) controller.s("extra_expired") else controller.sf("stat_days", days) + " · " + controller.s("stat_left")
             } else {
                 controller.s("stat_no_term")
             },

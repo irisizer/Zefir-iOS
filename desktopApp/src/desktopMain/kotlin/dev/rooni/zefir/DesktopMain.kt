@@ -7,6 +7,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.rooni.zefir.app.AppController
 import dev.rooni.zefir.platform.createPlatform
+import dev.rooni.zefir.model.Tab
 import dev.rooni.zefir.ui.ZefirApp
 import kotlinx.coroutines.MainScope
 
@@ -18,6 +19,11 @@ fun main() = application {
         title = "Zefir",
         state = rememberWindowState(size = DpSize(412.dp, 892.dp)),
     ) {
-        ZefirApp(controller)
+        val initialTab = when ((System.getenv("ZEFIR_TAB") ?: "").lowercase()) {
+            "servers" -> Tab.Servers
+            "settings" -> Tab.Settings
+            else -> Tab.Home
+        }
+        ZefirApp(controller, initialTab)
     }
 }
