@@ -58,6 +58,10 @@ data class ProxyNode(
     val flag: String? = null,
     /** группа/сервис из подписки, если сервер привязан к отдельному сервису */
     val group: String? = null,
+    /** логин: uuid (vless/vmess/tuic), пароль (trojan/ss/hysteria2) */
+    val user: String = "",
+    /** все query-параметры share-ссылки: sni, pbk, sid, type, path, serviceName, obfs… */
+    val params: Map<String, String> = emptyMap(),
 ) {
     val key: String get() = "$name|$server|$port"
 }

@@ -36,7 +36,7 @@ interface Platform {
 
     fun tunnelState(): TunnelState
     fun traffic(): Traffic
-    suspend fun startTunnel(options: TunnelOptions, nodes: List<String>): Result<Unit>
+    suspend fun startTunnel(options: TunnelOptions, configJson: String): Result<Unit>
     suspend fun stopTunnel(): Result<Unit>
 
     /** Задержка до сервера: TCP-коннект или настоящий запрос через туннель. */

@@ -131,7 +131,9 @@ class AppController(
                 only = settings.onlyApps,
                 excluded = settings.excludedApps,
             )
-            val result = platform.startTunnel(options, nodes.map { it.link.ifBlank { it.name } })
+            val node = activeNode ?: nodes.first()
+            val configJson = SingBox.buildConfig(node, settings)
+            val result = platform.startTunnel(options, configJson)
             tunnel = if (result.isSuccess) {
                 sessionStart = nowMillis()
                 startTrafficLoop()
@@ -178,6 +180,13 @@ class AppController(
         trafficJob = scope.launch {
             while (true) {
                 traffic = platform.traffic()
+                // если систему отключила туннель сама — честно уводим в Off
+                val state = platform.tunnelState()
+                if (state is TunnelState.Off || state is TunnelState.Failed) {
+                    tunnel = if (state is TunnelState.Failed) state else TunnelState.Off
+                    sessionStart = null
+                    break
+                }
                 delay(1000)
             }
         }

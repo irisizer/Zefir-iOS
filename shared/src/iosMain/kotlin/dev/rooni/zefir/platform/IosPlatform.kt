@@ -84,11 +84,11 @@ class IosPlatform : Platform {
 
     override fun traffic(): Traffic = TunnelBridge.handler?.traffic() ?: Traffic()
 
-    override suspend fun startTunnel(options: TunnelOptions, nodes: List<String>): Result<Unit> {
+    override suspend fun startTunnel(options: TunnelOptions, configJson: String): Result<Unit> {
         val bridge = TunnelBridge.handler
             ?: return Result.failure(IllegalStateException(TunnelBridge.NOT_CONFIGURED))
         tunnel = TunnelState.Starting
-        val result = bridge.start(nodes.joinToString("\n"))
+        val result = bridge.start(configJson)
         tunnel = if (result.isSuccess) TunnelState.On else TunnelState.Failed(result.exceptionOrNull()?.message.orEmpty())
         return result
     }

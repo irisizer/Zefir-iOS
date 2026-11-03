@@ -100,7 +100,7 @@ class DesktopPlatform(private val dir: File) : Platform {
         return Traffic(up = fakeUp, down = fakeDown, upSpeed = upSpeed, downSpeed = downSpeed)
     }
 
-    override suspend fun startTunnel(options: TunnelOptions, nodes: List<String>): Result<Unit> {
+    override suspend fun startTunnel(options: TunnelOptions, configJson: String): Result<Unit> {
         delay(700)
         tunnel = TunnelState.On
         startedAt = nowMillis()
