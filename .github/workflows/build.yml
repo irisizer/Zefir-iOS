@@ -40,6 +40,21 @@ jobs:
           rm -rf iosApp/Frameworks/Libbox.xcframework
           cp -R /tmp/Libbox.xcframework iosApp/Frameworks/
 
+      - name: Dump Libbox API (headers)
+        if: always()
+        run: |
+          HEADER=iosApp/Frameworks/Libbox.xcframework/ios-arm64/Libbox.framework/Headers/Libbox.h
+          echo "===== gomobile version ====="
+          (cd /tmp/singbox && go list -m golang.org/x/mobile)
+          for PROTO in PlatformInterface TunOptions InterfaceUpdateListener NetworkInterfaceIterator StringIterator RoutePrefixIterator Notification WIFIState; do
+            echo "===== @protocol Libbox$PROTO ====="
+            awk "/@protocol Libbox$PROTO/,/@end/" "$HEADER" || true
+          done
+          echo "===== class LibboxNetworkInterface ====="
+          awk "/@interface LibboxNetworkInterface/,/^@end/" "$HEADER" || true
+          echo "===== functions ====="
+          grep -E "Libbox(NewService|Setup|SetMemoryLimit|GetTunnelFileDescriptor|NewCommandServer)" "$HEADER" || true
+
       - name: Build Kotlin/Compose framework (iosArm64)
         run: |
           chmod +x gradlew
