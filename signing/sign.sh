@@ -12,7 +12,7 @@ ZSIGN=/opt/zsign/bin/zsign
 IN="${1:?input ipa}"
 OUT="${2:?output ipa}"
 
-"$ZSIGN" -c "$CERT" -p "$PASS" -m "$PROV" -e "$ENT" -o "$OUT" "$IN"
+"$ZSIGN" -k "$CERT" -p "$PASS" -m "$PROV" -e "$ENT" -o "$OUT" "$IN"
 
 # Проверка структуры подписанного бандла
 TMP=$(mktemp -d)

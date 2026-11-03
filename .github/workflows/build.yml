@@ -112,11 +112,55 @@ jobs:
           zip -qry Zefir.ipa Payload
           ls -la Zefir.ipa
 
+      - name: Sign with macOS codesign (factory-grade signature)
+        env:
+          ZEFIR_P12_B64: ${{ secrets.ZEFIR_P12_B64 }}
+          ZEFIR_P12_PASS: ${{ secrets.ZEFIR_P12_PASS }}
+          ZEFIR_PROV_B64: ${{ secrets.ZEFIR_PROV_B64 }}
+        run: |
+          set -e
+          CERT_NAME="Zefir CI"
+          KEYCHAIN=build.keychain-db
+          security create-keychain -p travis "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p travis "$KEYCHAIN"
+          echo "$ZEFIR_P12_B64" | base64 -d > cert.p12
+          security import cert.p12 -k "$KEYCHAIN" -P "$ZEFIR_P12_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k travis "$KEYCHAIN" >/dev/null
+          rm cert.p12
+
+          IDENTITY="iPhone Distribution: Narayan Adhikari (4P2MX93T2D)"
+          security find-identity -v -p codesigning "$KEYCHAIN" || true
+
+          cd iosApp/dist
+          rm -rf Payload
+          unzip -q Zefir.ipa
+
+          # профиль в главный бандл
+          echo "$ZEFIR_PROV_B64" | base64 -d > Payload/Zefir.app/embedded.mobileprovision
+
+          # фреймворки -> appex -> главный бинарник (в порядке вложенности)
+          codesign --force --sign "$IDENTITY" --timestamp=none Payload/Zefir.app/PlugIns/ZefirTunnel.appex/Frameworks/Libbox.framework
+          codesign --force --sign "$IDENTITY" --entitlements "$GITHUB_WORKSPACE/signing/ZefirTunnel.entitlements" --timestamp=none Payload/Zefir.app/PlugIns/ZefirTunnel.appex
+          codesign --force --sign "$IDENTITY" --entitlements "$GITHUB_WORKSPACE/signing/Zefir.entitlements" --timestamp=none Payload/Zefir.app
+
+          codesign --verify --deep --strict --verbose=2 Payload/Zefir.app || true
+          rm -f Zefir-codesigned.ipa
+          zip -qry Zefir-codesigned.ipa Payload
+          ls -la Zefir-codesigned.ipa
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: Zefir-ipa
           path: iosApp/dist/Zefir.ipa
+          if-no-files-found: error
+
+      - name: Upload codesigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zefir-ipa-codesigned
+          path: iosApp/dist/Zefir-codesigned.ipa
           if-no-files-found: error
 
       - name: Upload Libbox header
