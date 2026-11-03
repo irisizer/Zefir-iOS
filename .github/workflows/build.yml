@@ -28,6 +28,7 @@ jobs:
         run: |
           git clone --depth 1 --branch v1.11.15 https://github.com/SagerNet/sing-box /tmp/singbox
           cd /tmp/singbox
+          go get golang.org/x/mobile@latest
           go install golang.org/x/mobile/cmd/gomobile@latest
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
           gomobile init
@@ -43,9 +44,10 @@ jobs:
       - name: Dump Libbox API (headers)
         if: always()
         run: |
+          set +e
           HEADER=iosApp/Frameworks/Libbox.xcframework/ios-arm64/Libbox.framework/Headers/Libbox.h
           echo "===== gomobile version ====="
-          (cd /tmp/singbox && go list -m golang.org/x/mobile)
+          (cd /tmp/singbox && go list -m golang.org/x/mobile) || true
           for PROTO in PlatformInterface TunOptions InterfaceUpdateListener NetworkInterfaceIterator StringIterator RoutePrefixIterator Notification WIFIState; do
             echo "===== @protocol Libbox$PROTO ====="
             awk "/@protocol Libbox$PROTO/,/@end/" "$HEADER" || true
