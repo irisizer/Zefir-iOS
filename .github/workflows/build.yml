@@ -49,14 +49,19 @@ jobs:
           HEADER=iosApp/Frameworks/Libbox.xcframework/ios-arm64/Libbox.framework/Headers/Libbox.h
           echo "===== gomobile version ====="
           (cd /tmp/singbox && go list -m golang.org/x/mobile) || true
-          for PROTO in PlatformInterface TunOptions InterfaceUpdateListener NetworkInterfaceIterator StringIterator RoutePrefixIterator Notification WIFIState; do
-            echo "===== @protocol Libbox$PROTO ====="
-            awk "/@protocol Libbox$PROTO/,/@end/" "$HEADER" || true
-          done
-          echo "===== class LibboxNetworkInterface ====="
-          awk "/@interface LibboxNetworkInterface/,/^@end/" "$HEADER" || true
+          echo "===== header overview ====="
+          grep -nE "@protocol|@interface Libbox" "$HEADER" | head -60
+          echo "===== PlatformInterface full ====="
+          awk "/LibboxPlatformInterface/,/^@end/" "$HEADER" | head -80
+          echo "===== TunOptions full ====="
+          awk "/LibboxTunOptions/,/^@end/" "$HEADER" | head -60
+          echo "===== Notification / StringBox / SetupOptions ====="
+          awk "/LibboxNotification /,/^@end/" "$HEADER" | head -40
+          awk "/LibboxStringBox /,/^@end/" "$HEADER" | head -20
+          awk "/LibboxSetupOptions /,/^@end/" "$HEADER" | head -30
           echo "===== functions ====="
-          grep -E "Libbox(NewService|Setup|SetMemoryLimit|GetTunnelFileDescriptor|NewCommandServer)" "$HEADER" || true
+          grep -E "Libbox(NewService|Setup|SetMemoryLimit|GetTunnelFileDescriptor)" "$HEADER" || true
+          cp "$HEADER" /tmp/Libbox-dump.h || true
 
       - name: Build Kotlin/Compose framework (iosArm64)
         run: |
@@ -105,3 +110,11 @@ jobs:
           name: Zefir-ipa
           path: iosApp/dist/Zefir.ipa
           if-no-files-found: error
+
+      - name: Upload Libbox header
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-header
+          path: /tmp/Libbox-dump.h
+          if-no-files-found: ignore

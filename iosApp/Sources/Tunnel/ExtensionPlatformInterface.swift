@@ -19,6 +19,12 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
         super.init()
     }
 
+    private struct RouteItem {
+        let address: String
+        let prefix: Int32
+        let mask: String
+    }
+
     // MARK: - TUN
 
     func openTun(_ options: LibboxTunOptionsProtocol?, ret0_: UnsafeMutablePointer<Int32>?) throws {
@@ -28,12 +34,17 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
             ])
         }
 
-        func collect(_ getter: () -> LibboxRoutePrefixIteratorProtocol?) -> [(address: String, prefix: Int32, mask: String)] {
-            var result: [(address: String, prefix: Int32, mask: String)] = []
+        func collect(_ getter: () -> LibboxRoutePrefixIteratorProtocol?) -> [RouteItem] {
+            var result: [RouteItem] = []
             guard let iterator = getter() else { return result }
             while iterator.hasNext() {
                 guard let prefix = iterator.next() else { break }
-                result.append((prefix.address, prefix.prefix, prefix.mask))
+                let item = RouteItem(
+                    address: prefix.address as String? ?? "",
+                    prefix: (prefix.prefix as Int32? ?? 0),
+                    mask: prefix.mask as String? ?? ""
+                )
+                result.append(item)
             }
             return result
         }
@@ -59,7 +70,7 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
         let ipv4Settings: NEIPv4Settings
         if route4.isEmpty {
             ipv4Settings = NEIPv4Settings(addresses: v4Addresses, subnetMasks: v4Masks)
-            ipv4Settings.includedRoutes = [NEIPv4Route.defaultRoute()]
+            ipv4Settings.includedRoutes = [NEIPv4Route.default()]
         } else {
             ipv4Settings = NEIPv4Settings(addresses: v4Addresses, subnetMasks: v4Masks)
             ipv4Settings.includedRoutes = route4.map {
@@ -71,7 +82,7 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
         if !v6Addresses.isEmpty {
             let settings = NEIPv6Settings(addresses: v6Addresses, networkPrefixLengths: v6Prefixes)
             if route6.isEmpty {
-                settings.includedRoutes = [NEIPv6Route.defaultRoute()]
+                settings.includedRoutes = [NEIPv6Route.default()]
             } else {
                 settings.includedRoutes = route6.map {
                     NEIPv6Route(destinationAddress: $0.address, networkPrefixLength: NSNumber(value: $0.prefix))
@@ -88,10 +99,13 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
         }
 
         // DNS из опций туннеля (адрес идёт следом за адресом интерфейса)
-        if let box = try? options.getDNSServerAddress(), let server = box?.value, !server.isEmpty {
-            let dns = NEDNSSettings(servers: [server])
-            dns.matchDomains = [""] // перехватываем весь DNS
-            settings.dnsSettings = dns
+        if let box = try? options.getDNSServerAddress() {
+            let server = box.value as String? ?? ""
+            if !server.isEmpty {
+                let dns = NEDNSSettings(servers: [server])
+                dns.matchDomains = [""] // перехватываем весь DNS
+                settings.dnsSettings = dns
+            }
         }
 
         let semaphore = DispatchSemaphore(value: 0)
@@ -118,9 +132,9 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
 
     // MARK: - окружение
 
-    func usePlatformAutoDetectInterfaceControl() -> Bool { false }
+    func usePlatformAutoDetectControl() -> Bool { false }
 
-    func autoDetectInterfaceControl(_ fd: Int32) throws {
+    func autoDetectControl(_ fd: Int32) throws {
         // Android protect-сокета, на iOS не нужен
     }
 
@@ -169,7 +183,7 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
         } else {
             name = path.availableInterfaces.first?.name ?? "en0"
         }
-        listener.updateDefaultInterface(name, index: 0, isExpensive: path.isExpensive, isConstrained: false)
+        listener.updateDefaultInterface(name, interfaceIndex: 0, isExpensive: path.isExpensive, isConstrained: false)
     }
 
     // MARK: - заглушки
@@ -196,7 +210,7 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
 
     func readWIFIState() -> LibboxWIFIState? { nil }
 
-    func sendNotification(_ notification: LibboxNotification?) throws {}
+    func send(_ notification: LibboxNotification?) throws {}
 }
 
 // MARK: - итератор интерфейсов

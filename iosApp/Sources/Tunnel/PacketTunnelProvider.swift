@@ -43,21 +43,30 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
 
-        do {
-            let setup = LibboxSetupOptions()
-            setup.basePath = container.path
-            setup.workingPath = workingDir.path
-            setup.tempPath = cacheDir.path
-            try LibboxSetup(setup)
-        } catch {
-            log.fault("libbox setup: \(error.localizedDescription, privacy: .public)")
-            completionHandler(error)
+        let setup = LibboxSetupOptions()
+        setup.basePath = container.path
+        setup.workingPath = workingDir.path
+        setup.tempPath = cacheDir.path
+        var setupError: NSError?
+        LibboxSetup(setup, &setupError)
+        if let setupError {
+            log.fault("libbox setup: \(setupError.localizedDescription, privacy: .public)")
+            completionHandler(setupError)
             return
         }
 
         let interface = ExtensionPlatformInterface(provider: self)
         do {
-            let service = try LibboxNewService(config, interface)
+            var serviceError: NSError?
+            let service = LibboxNewService(config, interface, &serviceError)
+            if let serviceError {
+                throw serviceError
+            }
+            guard let service else {
+                throw NSError(domain: "zefir.tunnel", code: 6, userInfo: [
+                    NSLocalizedDescriptionKey: "libbox не создал сервис",
+                ])
+            }
             try service.start()
             self.service = service
             self.platformInterface = interface
