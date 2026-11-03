@@ -8,11 +8,15 @@ final class TunnelManager: NSObject, TunnelHandler {
 
     static let shared = TunnelManager()
 
+    private enum TunnelConstants {
+        static let appGroup = "group.833d43e5a1beb974.1"
+    }
+
     private var manager: NETunnelProviderManager?
     private var observer: NSObjectProtocol?
     private var lastStatus: NEVPNStatus = .invalid
 
-    func start(_ config: String) {
+    func start(config: String) {
         guard
             let container = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: TunnelConstants.appGroup)
@@ -28,7 +32,7 @@ final class TunnelManager: NSObject, TunnelHandler {
     func stop() {
         let session = manager?.connection as? NETunnelProviderSession
             ?? (try? NETunnelProviderManager.loadAllFromPreferencesAndWait().first)?.connection as? NETunnelProviderSession
-        session?.stopVPN()
+        session?.stopVPNTunnel()
     }
 
     func status() -> Int32 {
@@ -70,7 +74,7 @@ final class TunnelManager: NSObject, TunnelHandler {
             observeStatus(tunnel)
 
             guard let session = tunnel.connection as? NETunnelProviderSession else { return }
-            try session.startVPN(options: nil)
+            try session.startVPNTunnel(options: nil as? [String: NSObject])
         } catch {
             NSLog("Zefir tunnel install/start failed: \(error.localizedDescription)")
         }
