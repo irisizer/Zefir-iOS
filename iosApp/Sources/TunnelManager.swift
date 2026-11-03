@@ -21,7 +21,7 @@ final class TunnelManager: NSObject, TunnelHandler {
         guard
             let container = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: TunnelConstants.appGroup)
-        else { return }
+        else { return nil }
         try? config.write(
             to: container.appendingPathComponent("singbox.json"),
             atomically: true,
