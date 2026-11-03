@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,6 +67,7 @@ import dev.rooni.zefir.ui.AppSheet
 import dev.rooni.zefir.ui.Navigator
 import dev.rooni.zefir.ui.Route
 import dev.rooni.zefir.ui.formatBytes
+import dev.rooni.zefir.ui.SelectChip
 import dev.rooni.zefir.ui.formatPing
 import dev.rooni.zefir.ui.rememberNow
 import kotlin.math.roundToInt
@@ -81,6 +83,10 @@ fun ServersScreen(controller: AppController, navigator: Navigator) {
 
     val profile = controller.activeProfile
     val all = profile?.nodes.orEmpty()
+
+    androidx.compose.runtime.LaunchedEffect(all.size) {
+        if (all.isNotEmpty() && controller.pings.isEmpty()) controller.pingAll()
+    }
     val filtered = remember(query, all) {
         if (query.isBlank()) all else all.filter { it.name.contains(query, ignoreCase = true) }
     }
@@ -125,7 +131,7 @@ fun ServersScreen(controller: AppController, navigator: Navigator) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text(controller.s("search_hint")) },
+                placeholder = { Text(controller.s("extra_search_servers")) },
                 leadingIcon = { Icon(Icons.Rounded.Search, null) },
                 singleLine = true,
                 shape = RoundedCornerShape(20.dp),
@@ -193,7 +199,7 @@ fun ServersScreen(controller: AppController, navigator: Navigator) {
         }
     }
 
-    sortSheet?.let {
+    if (sortSheet) {
         SortSheet(controller) { sortSheet = false }
     }
 
@@ -231,7 +237,7 @@ private fun SheetAction(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 private fun SortSheet(controller: AppController, onClose: () -> Unit) {
     val settings = controller.settings
     AppSheet(title = controller.s("sort_title"), onClose = onClose) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SortChip(controller.s("sort_default"), settings.serverSort == ServerSort.Default) {
                 controller.update { it.copy(serverSort = ServerSort.Default) }
             }
@@ -243,7 +249,7 @@ private fun SortSheet(controller: AppController, onClose: () -> Unit) {
             }
         }
         Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SortChip(
                 controller.s("servers_layout_list"),
                 settings.serverLayout == ServerLayout.List,
@@ -254,7 +260,7 @@ private fun SortSheet(controller: AppController, onClose: () -> Unit) {
             ) { controller.update { it.copy(serverLayout = ServerLayout.Grid) } }
         }
         Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SortChip(controller.s("servers_density_compact"), settings.serverDensity == ServerDensity.Compact) {
                 controller.update { it.copy(serverDensity = ServerDensity.Compact) }
             }
@@ -270,18 +276,7 @@ private fun SortSheet(controller: AppController, onClose: () -> Unit) {
 
 @Composable
 private fun SortChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.clickable { onClick() },
-    ) {
-        Text(
-            text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    SelectChip(text, selected, onClick)
 }
 
 @Composable

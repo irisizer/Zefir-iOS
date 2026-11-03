@@ -1,7 +1,9 @@
 package dev.rooni.zefir.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -39,17 +44,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.rooni.zefir.platform.nowMillis
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -91,13 +99,26 @@ fun SettingRow(
     showArrow: Boolean = onClick != null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 900f),
+        label = "rowScale",
+    )
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = interaction, indication = androidx.compose.material3.ripple()) { onClick() }
+                } else Modifier
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -184,29 +205,14 @@ fun <T> ChoiceButtons(
     modifier: Modifier = Modifier,
     onSelect: (T) -> Unit,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { (value, label) ->
-            val isSelected = value == selected
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-                else MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.weight(1f).clickable { onSelect(value) },
-            ) {
-                Box(Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        options.forEachIndexed { index, (value, label) ->
+            SegmentedButton(
+                selected = value == selected,
+                onClick = { onSelect(value) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
         }
     }
 }
@@ -310,13 +316,33 @@ fun AppSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onClose, sheetState = state) {
+    val scope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+
+    // Закрывать только через hide(): если просто убрать composable, на iOS окно
+    // шита может остаться поверх экрана и съедать все нажатия.
+    fun close() {
+        if (closing) return
+        closing = true
+        scope.launch {
+            runCatching { state.hide() }
+            onClose()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { close() },
+        sheetState = state,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = null) }
+            IconButton(onClick = { close() }) { Icon(Icons.Rounded.Close, contentDescription = null) }
         }
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp), content = content)
     }
@@ -349,17 +375,29 @@ fun ActionButton(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 700f),
+        label = "actionScale",
+    )
     Surface(
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(if (pressed) 20.dp else 28.dp),
         color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-        modifier = modifier.fillMaxWidth().height(56.dp).clickable(enabled) { onClick() },
+        contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                enabled = enabled,
+                interactionSource = interaction,
+                indication = androidx.compose.material3.ripple(),
+            ) { onClick() },
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(text, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -372,6 +410,16 @@ fun Divider(inset: Int = 16) {
             .padding(start = inset.dp, end = inset.dp)
             .height(1.dp)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+    )
+}
+
+/** Чип выбора — Material 3 FilterChip. */
+@Composable
+fun SelectChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(text) },
     )
 }
 

@@ -19,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.withContext
 
 /**
@@ -54,6 +56,13 @@ class AppController(
 
     /** Время запуска туннеля (для виджета сеанса). */
     var sessionStart by mutableStateOf<Long?>(null)
+        private set
+
+    /** IP выхода: определяем запросом к api.ipify.org (через туннель, если он включён). */
+    var exitIp by mutableStateOf<String?>(null)
+        private set
+
+    var ipLoading by mutableStateOf(false)
         private set
 
     private var trafficJob: Job? = null
@@ -325,6 +334,17 @@ class AppController(
         ImportError.Unsupported -> s("add_err_unsupported")
         ImportError.NoServers -> s("add_err_no_servers")
         ImportError.Blocked -> s("add_err_blocked")
+    }
+
+    fun refreshExitIp() {
+        if (ipLoading) return
+        ipLoading = true
+        scope.launch {
+            exitIp = runCatching {
+                createHttpClient().get("https://api.ipify.org").bodyAsText().trim()
+            }.getOrNull()?.takeIf { it.isNotEmpty() && it.length < 40 }
+            ipLoading = false
+        }
     }
 
     // ---------- пинг ----------

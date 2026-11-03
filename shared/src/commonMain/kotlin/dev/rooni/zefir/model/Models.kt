@@ -35,7 +35,7 @@ enum class HomeWidget {
     Traffic, Server, Subscription, Speed, Ip, Mode, SplitApps;
 
     companion object {
-        val defaultOrder = listOf(Traffic, Server, Subscription, Speed)
+        val defaultOrder = listOf(Server, Subscription)
     }
 }
 
@@ -168,8 +168,9 @@ data class ConnectionInfo(
 
 @Serializable
 data class AppSettings(
-    val accent: Long = 0xFF7C4DFFL,
-    val palette: Int = 0,
+    val accent: Long = 0xFF2F5D50,  // дефолт из APK 1.1.5 (AccentChoices[5])
+    /** -1 — один акцент, 0..5 — мультипалитра */
+    val palette: Int = -1,
     val theme: ThemeMode = ThemeMode.System,
     val dynamicColor: Boolean = true,
     val amoled: Boolean = false,
@@ -214,12 +215,12 @@ data class AppSettings(
     val serverSortDesc: Boolean = false,
     val serverLayout: ServerLayout = ServerLayout.List,
     val serverDensity: ServerDensity = ServerDensity.Normal,
-    val railExpanded: Boolean = true,
-    val widgets: List<HomeWidget> = HomeWidget.defaultOrder,
+    val railExpanded: Boolean = false,
+    val widgets: List<HomeWidget> = HomeWidget.defaultOrder,  // APK: [Server, Subscription]
     val searchHistory: List<String> = emptyList(),
 
     val connectOnStart: Boolean = false,
-    val autoSwitch: Boolean = true,
+    val autoSwitch: Boolean = false,
     val autoRules: Boolean = false,
     val trustedWifi: Set<String> = emptySet(),
     val autoConnectElsewhere: Boolean = false,

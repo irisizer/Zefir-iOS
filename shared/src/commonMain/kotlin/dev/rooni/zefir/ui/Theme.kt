@@ -5,13 +5,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import dev.rooni.zefir.model.AppSettings
@@ -183,7 +186,9 @@ fun AppTheme(
 
     val scheme = remember(settings.accent, settings.palette, settings.amoled, dark, settings.dynamicColor, systemScheme) {
         var base = systemScheme ?: run {
-            val palette = MultiPalettes.getOrNull(settings.palette)
+            // iOS: системного цвета нет — «Цвет системы» честно откатывается к акценту.
+            // Разноцветная палитра включается только явным выбором (palette >= 0).
+            val palette = if (systemScheme == null && settings.dynamicColor) null else MultiPalettes.getOrNull(settings.palette)
             if (palette != null) {
                 val schemes = palette.map { singleHue(it, dark) }
                 val second = schemes[1]
@@ -243,6 +248,13 @@ fun AppTheme(
         MaterialExpressiveTheme(
             colorScheme = scheme,
             motionScheme = MotionScheme.expressive(),
+            shapes = Shapes(
+                extraSmall = RoundedCornerShape(12.dp),
+                small = RoundedCornerShape(16.dp),
+                medium = RoundedCornerShape(20.dp),
+                large = RoundedCornerShape(28.dp),
+                extraLarge = RoundedCornerShape(36.dp),
+            ),
             content = content,
         )
     }

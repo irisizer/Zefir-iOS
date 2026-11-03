@@ -1,5 +1,13 @@
 package dev.rooni.zefir.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,27 +82,38 @@ fun OnboardingScreen(controller: AppController, onDone: () -> Unit) {
         }
         Spacer(Modifier.height(32.dp))
 
-        when (step) {
-            0 -> Step(
-                icon = Icons.Rounded.AutoAwesome,
-                title = controller.s("ob_welcome_title"),
-                text = controller.s("ob_welcome_text"),
-            )
-            1 -> Step(
-                icon = Icons.Rounded.Cloud,
-                title = controller.s("ob_add_title"),
-                text = controller.s("ob_add_text"),
-            )
-            2 -> Step(
-                icon = Icons.Rounded.Tune,
-                title = controller.s("ob_region_title"),
-                text = controller.s("ob_region_text"),
-            )
-            else -> Step(
-                icon = Icons.Rounded.PowerSettingsNew,
-                title = controller.s("ob_done_title"),
-                text = controller.s("ob_done_text"),
-            )
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                val fadeSpec = spring<Float>(dampingRatio = 0.85f, stiffness = 420f)
+                val slideSpec = spring<IntOffset>(dampingRatio = 0.85f, stiffness = 420f)
+                (fadeIn(fadeSpec) + slideInHorizontally(slideSpec) { it / 5 } + scaleIn(fadeSpec, initialScale = 0.94f)) togetherWith
+                    (fadeOut(fadeSpec) + slideOutHorizontally(slideSpec) { -it / 6 })
+            },
+            label = "step",
+        ) { current ->
+            when (current) {
+                0 -> Step(
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = controller.s("ob_welcome_title"),
+                    text = controller.s("ob_welcome_text"),
+                )
+                1 -> Step(
+                    icon = Icons.Rounded.Cloud,
+                    title = controller.s("ob_add_title"),
+                    text = controller.s("ob_add_text"),
+                )
+                2 -> Step(
+                    icon = Icons.Rounded.Tune,
+                    title = controller.s("ob_region_title"),
+                    text = controller.s("ob_region_text"),
+                )
+                else -> Step(
+                    icon = Icons.Rounded.PowerSettingsNew,
+                    title = controller.s("ob_done_title"),
+                    text = controller.s("ob_done_text"),
+                )
+            }
         }
 
         Spacer(Modifier.weight(1f))
@@ -125,7 +145,12 @@ fun OnboardingScreen(controller: AppController, onDone: () -> Unit) {
 @Composable
 private fun Step(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, text: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(120.dp)) {
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(120.dp),
+        ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(52.dp))
             }
@@ -135,6 +160,7 @@ private fun Step(icon: androidx.compose.ui.graphics.vector.ImageVector, title: S
             title,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(10.dp))

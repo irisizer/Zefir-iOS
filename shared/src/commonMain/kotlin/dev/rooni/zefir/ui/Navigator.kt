@@ -41,6 +41,7 @@ class Navigator(private val onTabChange: (Tab) -> Unit, initialTab: Tab = Tab.Ho
 
     fun push(route: Route) {
         if (route == Route.Tabs) return
+        if (stack.lastOrNull() == route) return
         stack.add(route)
     }
 
@@ -53,9 +54,10 @@ class Navigator(private val onTabChange: (Tab) -> Unit, initialTab: Tab = Tab.Ho
     }
 
     fun select(tab: Tab) {
-        if (this.tab == tab && stack.size == 1) {
-            reselects[tab] = (reselects[tab] ?: 0) + 1
-        }
+        // Любой подэкран закрывается: иначе снизу подсвечивается новая вкладка,
+        // а на экране остаётся открытая настройка.
+        if (stack.size > 1) popAll()
+        if (this.tab == tab) reselects[tab] = (reselects[tab] ?: 0) + 1
         this.tab = tab
         onTabChange(tab)
     }

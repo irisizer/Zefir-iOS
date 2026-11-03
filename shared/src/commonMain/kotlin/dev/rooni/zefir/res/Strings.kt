@@ -66,6 +66,10 @@ object Strings {
 
     /** Строки, которых нет в APK 1.1.5, но нужны порту. */
     val extra: Map<String, Map<String, String>> = mapOf(
+        "extra_search_servers" to mapOf(
+            "ru" to "Найти сервер", "en" to "Find a server",
+            "be" to "Знайсці сервер", "uk" to "Знайти сервер", "zh" to "搜索服务器",
+        ),
         "extra_expired" to mapOf(
             "ru" to "срок истёк", "en" to "expired",
             "be" to "тэрмін скончыўся", "uk" to "термін минув", "zh" to "已过期",

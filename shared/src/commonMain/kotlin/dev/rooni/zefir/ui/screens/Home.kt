@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +81,7 @@ fun HomeScreen(controller: AppController, navigator: Navigator) {
         Spacer(Modifier.height(8.dp))
         ConnectHero(controller)
         Spacer(Modifier.height(20.dp))
+        androidx.compose.runtime.LaunchedEffect(Unit) { controller.refreshExitIp() }
         val widgets = controller.settings.widgets.ifEmpty { HomeWidget.defaultOrder }
         widgets.forEachIndexed { index, widget ->
             if (index > 0) Spacer(Modifier.height(10.dp))
@@ -143,43 +145,68 @@ fun ConnectHero(controller: AppController) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.94f else if (on) 1.02f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 800f),
+        targetValue = if (pressed) 0.93f else if (on) 1.02f else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 780f),
         label = "heroScale",
     )
+    // Морфинг формы: круг на выключенном, «капля» на включённом.
+    val morph by animateFloatAsState(
+        targetValue = if (on) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 240f),
+        label = "heroMorph",
+    )
+    val shape = RoundedCornerShape(
+        topStart = lerp(84.dp, 46.dp, morph),
+        topEnd = lerp(84.dp, 84.dp, morph),
+        bottomEnd = lerp(84.dp, 46.dp, morph),
+        bottomStart = lerp(84.dp, 84.dp, morph),
+    )
+    val glowAlpha by animateFloatAsState(if (on) 0.30f else 0.10f, label = "glow")
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
-            if (on || busy) {
-                val ringAlpha = if (busy) 0.28f else 0.16f
-                Box(
-                    Modifier
-                        .size(232.dp)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = ringAlpha),
-                                    Color.Transparent,
-                                )
+            Box(
+                Modifier
+                    .size(248.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha), Color.Transparent),
+                        ),
+                        CircleShape,
+                    )
+            )
+            Box(
+                Modifier
+                    .size(196.dp)
+                    .background(
+                        Brush.sweepGradient(
+                            listOf(
+                                container.copy(alpha = 0.55f),
+                                container,
+                                container.copy(alpha = 0.75f),
+                                container.copy(alpha = 0.55f),
                             ),
-                            CircleShape,
-                        )
-                )
-            }
+                        ),
+                        shape,
+                    )
+            )
             Surface(
-                shape = RoundedCornerShape(44.dp),
-                color = container,
+                shape = shape,
+                color = Color.Transparent,
+                contentColor = contentColor,
                 modifier = Modifier
-                    .size(168.dp)
+                    .size(172.dp)
                     .scale(scale)
-                    .clickable(interactionSource = interaction, indication = null) { controller.toggle() },
+                    .clickable(interactionSource = interaction, indication = androidx.compose.material3.ripple()) {
+                        controller.toggle()
+                    },
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (busy) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(72.dp),
+                            modifier = Modifier.size(64.dp),
                             color = contentColor,
-                            strokeWidth = 3.dp,
+                            strokeWidth = 4.dp,
                         )
                     } else {
                         Icon(
@@ -190,7 +217,7 @@ fun ConnectHero(controller: AppController) {
                             },
                             contentDescription = null,
                             tint = contentColor,
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(60.dp),
                         )
                     }
                 }
@@ -254,10 +281,14 @@ private fun WidgetFrame(index: Int, widget: HomeWidget, controller: AppControlle
             index,
             controller.s("w_ip"),
             Icons.Rounded.Language,
-            onClick = { navigator.push(Route.Diagnostics) },
+            onClick = { controller.refreshExitIp() },
         ) {
             Text(
-                controller.s("w_ip_loading"),
+                text = when {
+                    controller.ipLoading -> controller.s("w_ip_loading")
+                    controller.exitIp != null -> controller.exitIp!!
+                    else -> controller.s("w_ip_none")
+                },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

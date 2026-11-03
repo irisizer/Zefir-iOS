@@ -1,9 +1,12 @@
 package dev.rooni.zefir.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -29,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -41,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import dev.rooni.zefir.app.AppController
@@ -70,7 +75,15 @@ import dev.rooni.zefir.ui.screens.WidgetsScreen
 @Composable
 fun ZefirApp(controller: AppController, initialTab: Tab = Tab.Home) {
     AppTheme(controller.settings, controller.platform) {
-        MainFlow(controller, initialTab)
+        // Без корневого Surface LocalContentColor остаётся чёрным, и любой текст
+        // без явного цвета превращается в чёрный на тёмном фоне.
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            MainFlow(controller, initialTab)
+        }
     }
 }
 
@@ -142,6 +155,7 @@ private fun CompactLayout(controller: AppController, navigator: Navigator, snack
                         onClick = { navigator.select(tab) },
                         icon = { Icon(if (navigator.tab == tab) tab.selectedIcon() else tab.icon(), null) },
                         label = { Text(controller.s(tab.id)) },
+                        alwaysShowLabel = true,
                     )
                 }
             }
@@ -172,12 +186,14 @@ private fun TabsContent(controller: AppController, navigator: Navigator) {
     AnimatedContent(
         targetState = route,
         transitionSpec = {
+            val fadeSpec = spring<Float>(dampingRatio = 0.85f, stiffness = 380f)
+            val slideSpec = spring<IntOffset>(dampingRatio = 0.85f, stiffness = 380f)
             if (targetState == Route.Tabs) {
-                (fadeIn(tween(220)) + slideInHorizontally(tween(280)) { -it / 6 }) togetherWith
-                    (fadeOut(tween(180)) + slideOutHorizontally(tween(280)) { it / 6 })
+                (fadeIn(fadeSpec) + slideInHorizontally(slideSpec) { -it / 5 } + scaleIn(fadeSpec, initialScale = 0.96f)) togetherWith
+                    (fadeOut(fadeSpec) + slideOutHorizontally(slideSpec) { it / 5 })
             } else {
-                (fadeIn(tween(220)) + slideInHorizontally(tween(280)) { it / 6 }) togetherWith
-                    (fadeOut(tween(160)) + slideOutHorizontally(tween(280)) { -it / 8 })
+                (fadeIn(fadeSpec) + slideInHorizontally(slideSpec) { it / 4 } + scaleIn(fadeSpec, initialScale = 0.97f)) togetherWith
+                    (fadeOut(fadeSpec) + slideOutHorizontally(slideSpec) { -it / 8 })
             }
         },
         label = "route",
@@ -209,7 +225,14 @@ private fun TabsContent(controller: AppController, navigator: Navigator) {
 @Composable
 private fun TabsScreen(controller: AppController, navigator: Navigator) {
     val tab = navigator.tab
-    AnimatedContent(targetState = tab, transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }, label = "tab") { current ->
+    AnimatedContent(
+        targetState = tab,
+        transitionSpec = {
+            val fadeSpec = spring<Float>(dampingRatio = 0.9f, stiffness = 500f)
+            (fadeIn(fadeSpec) + scaleIn(fadeSpec, initialScale = 0.98f)) togetherWith fadeOut(fadeSpec)
+        },
+        label = "tab",
+    ) { current ->
         when (current) {
             Tab.Home -> HomeScreen(controller, navigator)
             Tab.Servers -> ServersScreen(controller, navigator)
