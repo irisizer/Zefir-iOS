@@ -7,11 +7,12 @@ import os.log
 /// Реализация LibboxPlatformInterface для NEPacketTunnelProvider.
 /// openTun переводит опции sing-box в NEPacketTunnelNetworkSettings
 /// и отдаёт fd системного utun (как в sing-box-for-apple / wireguard-apple).
-final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
+final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtocol {
 
     private let log = Logger(subsystem: "zefir.tunnel", category: "platform")
     private weak var provider: NEPacketTunnelProvider?
-    private var pathMonitor: NWPathMonitorInstance?
+    private var pathMonitor: NWPathMonitor?
+    private let monitorQueue = DispatchQueue(label: "zefir.tunnel.monitor")
 
     init(provider: NEPacketTunnelProvider) {
         self.provider = provider
@@ -20,19 +21,16 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
 
     // MARK: - TUN
 
-    func openTun(_ options: LibboxTunOptions?) throws -> Int32 {
+    func openTun(_ options: LibboxTunOptionsProtocol?, ret0_: UnsafeMutablePointer<Int32>?) throws {
         guard let options, let provider else {
             throw NSError(domain: "zefir.tunnel", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "openTun без опций",
             ])
         }
 
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-        settings.mtu = NSNumber(value: options.mtu)
-
-        func collect(_ iterator: LibboxRoutePrefixIterator?) -> [(address: String, prefix: Int32, mask: String)] {
-            var result: [(String, Int32, String)] = []
-            guard let iterator else { return result }
+        func collect(_ getter: () -> LibboxRoutePrefixIteratorProtocol?) -> [(address: String, prefix: Int32, mask: String)] {
+            var result: [(address: String, prefix: Int32, mask: String)] = []
+            guard let iterator = getter() else { return result }
             while iterator.hasNext() {
                 guard let prefix = iterator.next() else { break }
                 result.append((prefix.address, prefix.prefix, prefix.mask))
@@ -40,43 +38,57 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
             return result
         }
 
-        let ipv4 = NEIPv4Settings(addresses: [], subnetMasks: [])
-        var ipv6Present = false
-        let ipv6 = NEIPv6Settings(addresses: [], networkPrefixLengths: [])
+        let inet4 = collect { options.getInet4Address() }
+        let inet6 = collect { options.getInet6Address() }
+        let route4 = collect { options.getInet4RouteAddress() }
+        let route6 = collect { options.getInet6RouteAddress() }
 
-        for item in collect(options.inet4Address) {
-            ipv4.addresses.append(item.address)
-            ipv4.subnetMasks.append(item.mask)
+        var v4Addresses: [String] = []
+        var v4Masks: [String] = []
+        for item in inet4 {
+            v4Addresses.append(item.address)
+            v4Masks.append(item.mask)
         }
-        for item in collect(options.inet6Address) {
-            ipv6.addresses.append(item.address)
-            ipv6.networkPrefixLengths.append(NSNumber(value: item.prefix))
-            ipv6Present = true
+        var v6Addresses: [String] = []
+        var v6Prefixes: [NSNumber] = []
+        for item in inet6 {
+            v6Addresses.append(item.address)
+            v6Prefixes.append(NSNumber(value: item.prefix))
         }
 
-        // Маршруты: если sing-box не дал свой список — весь трафик в туннель.
-        let route4 = collect(options.inet4RouteAddress)
-        let route6 = collect(options.inet6RouteAddress)
+        let ipv4Settings: NEIPv4Settings
         if route4.isEmpty {
-            ipv4.includedRoutes = [NEIPv4Route.defaultRoute()]
+            ipv4Settings = NEIPv4Settings(addresses: v4Addresses, subnetMasks: v4Masks)
+            ipv4Settings.includedRoutes = [NEIPv4Route.defaultRoute()]
         } else {
-            ipv4.includedRoutes = route4.map { NEIPv4Route(destinationAddress: $0.address, subnetMask: $0.mask) }
-        }
-        if ipv6Present {
-            if route6.isEmpty {
-                ipv6.includedRoutes = [NEIPv6Route.defaultRoute()]
-            } else {
-                ipv6.includedRoutes = route6.map {
-                    NEIPv6Route(destinationAddress: $0.address, networkPrefixLength: NSNumber(value: $0.prefix))
-                }
+            ipv4Settings = NEIPv4Settings(addresses: v4Addresses, subnetMasks: v4Masks)
+            ipv4Settings.includedRoutes = route4.map {
+                NEIPv4Route(destinationAddress: $0.address, subnetMask: $0.mask)
             }
         }
 
-        settings.ipv4Settings = ipv4
-        if ipv6Present { settings.ipv6Settings = ipv6 }
+        var ipv6Settings: NEIPv6Settings? = nil
+        if !v6Addresses.isEmpty {
+            let settings = NEIPv6Settings(addresses: v6Addresses, networkPrefixLengths: v6Prefixes)
+            if route6.isEmpty {
+                settings.includedRoutes = [NEIPv6Route.defaultRoute()]
+            } else {
+                settings.includedRoutes = route6.map {
+                    NEIPv6Route(destinationAddress: $0.address, networkPrefixLength: NSNumber(value: $0.prefix))
+                }
+            }
+            ipv6Settings = settings
+        }
+
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
+        settings.mtu = NSNumber(value: options.getMTU())
+        settings.ipv4Settings = ipv4Settings
+        if let ipv6Settings {
+            settings.ipv6Settings = ipv6Settings
+        }
 
         // DNS из опций туннеля (адрес идёт следом за адресом интерфейса)
-        if let box = try? options.dNSServerAddress(), let server = box?.value, !server.isEmpty {
+        if let box = try? options.getDNSServerAddress(), let server = box?.value, !server.isEmpty {
             let dns = NEDNSSettings(servers: [server])
             dns.matchDomains = [""] // перехватываем весь DNS
             settings.dnsSettings = dns
@@ -94,13 +106,14 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
             throw setupError
         }
 
+        // fd системного utun, к которому привязан packetFlow
         let fd = LibboxGetTunnelFileDescriptor()
         if fd < 0 {
             throw NSError(domain: "zefir.tunnel", code: 2, userInfo: [
                 NSLocalizedDescriptionKey: "utun fd не найден в процессе расширения",
             ])
         }
-        return fd
+        ret0_?.pointee = fd
     }
 
     // MARK: - окружение
@@ -117,49 +130,68 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
 
     func useProcFS() -> Bool { false }
 
-    func writeLog(_ message: String) {
-        log.info("\(message, privacy: .public)")
+    func writeLog(_ message: String?) {
+        log.info("\(message ?? "", privacy: .public)")
     }
 
     func clearDNSCache() {}
 
     // MARK: - интерфейсы и монитор сети
 
-    func getInterfaces() throws -> LibboxNetworkInterfaceIterator {
-        NetworkInterfaceIterator(interfaces: SystemInterfaces.current())
+    func getInterfaces() throws -> LibboxNetworkInterfaceIteratorProtocol {
+        NetworkInterfaceArray(SystemInterfaces.current())
     }
 
-    func startDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListener?) throws {
-        let monitor = NWPathMonitorInstance(listener: listener)
-        monitor.start()
+    func startDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListenerProtocol?) throws {
+        guard let listener else { return }
+        let monitor = NWPathMonitor()
         pathMonitor = monitor
+        let semaphore = DispatchSemaphore(value: 0)
+        monitor.pathUpdateHandler = { [weak self] path in
+            self?.notify(listener, path: path)
+            semaphore.signal()
+        }
+        monitor.start(queue: monitorQueue)
+        semaphore.wait()
     }
 
-    func closeDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListener?) throws {
-        pathMonitor?.stop()
+    func closeDefaultInterfaceMonitor(_ listener: LibboxInterfaceUpdateListenerProtocol?) throws {
+        pathMonitor?.cancel()
         pathMonitor = nil
+    }
+
+    private func notify(_ listener: LibboxInterfaceUpdateListenerProtocol, path: Network.NWPath) {
+        let name: String
+        if let wifi = path.availableInterfaces.first(where: { $0.type == .wifi }) {
+            name = wifi.name
+        } else if let cellular = path.availableInterfaces.first(where: { $0.type == .cellular }) {
+            name = cellular.name
+        } else {
+            name = path.availableInterfaces.first?.name ?? "en0"
+        }
+        listener.updateDefaultInterface(name, index: 0, isExpensive: path.isExpensive, isConstrained: false)
     }
 
     // MARK: - заглушки
 
     func findConnectionOwner(
         _ ipProtocol: Int32,
-        sourceAddress: String,
+        sourceAddress: String?,
         sourcePort: Int32,
-        destinationAddress: String,
-        destinationPort: Int32
-    ) throws -> Int32 {
-        throw NSError(domain: "zefir.tunnel", code: 3, userInfo: [
-            NSLocalizedDescriptionKey: "findConnectionOwner недоступен на iOS",
-        ])
+        destinationAddress: String?,
+        destinationPort: Int32,
+        ret0_: UnsafeMutablePointer<Int32>?
+    ) throws {
+        ret0_?.pointee = -1
     }
 
-    func packageNameByUid(_ uid: Int32) throws -> String {
-        throw NSError(domain: "zefir.tunnel", code: 4)
+    func packageName(byUid uid: Int32, error: NSErrorPointer) -> String {
+        _ = error
+        return ""
     }
 
-    func uidByPackageName(_ packageName: String) throws -> Int32 {
-        throw NSError(domain: "zefir.tunnel", code: 5)
+    func uid(byPackageName packageName: String?, ret0_: UnsafeMutablePointer<Int32>?) throws {
+        ret0_?.pointee = -1
     }
 
     func readWIFIState() -> LibboxWIFIState? { nil }
@@ -167,42 +199,22 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterface {
     func sendNotification(_ notification: LibboxNotification?) throws {}
 }
 
-// MARK: - итераторы
+// MARK: - итератор интерфейсов
 
-final class NetworkInterfaceIterator: NSObject, LibboxNetworkInterfaceIterator {
-    private let interfaces: [LibboxNetworkInterface]
-    private var index = 0
+final class NetworkInterfaceArray: NSObject, LibboxNetworkInterfaceIteratorProtocol {
+    private var iterator: IndexingIterator<[LibboxNetworkInterface]>
+    private var nextValue: LibboxNetworkInterface?
 
-    init(interfaces: [LibboxNetworkInterface]) {
-        self.interfaces = interfaces
+    init(_ array: [LibboxNetworkInterface]) {
+        iterator = array.makeIterator()
     }
 
-    func len() -> Int32 { Int32(interfaces.count) }
-
-    func hasNext() -> Bool { index < interfaces.count }
-
-    func next() -> LibboxNetworkInterface? {
-        defer { index += 1 }
-        return index < interfaces.count ? interfaces[index] : nil
-    }
-}
-
-final class StringArrayIterator: NSObject, LibboxStringIterator {
-    private let values: [String]
-    private var index = 0
-
-    init(values: [String]) {
-        self.values = values
+    func hasNext() -> Bool {
+        nextValue = iterator.next()
+        return nextValue != nil
     }
 
-    func len() -> Int32 { Int32(values.count) }
-
-    func hasNext() -> Bool { index < values.count }
-
-    func next() -> String {
-        defer { index += 1 }
-        return index < values.count ? values[index] : ""
-    }
+    func next() -> LibboxNetworkInterface? { nextValue }
 }
 
 // MARK: - системные интерфейсы через getifaddrs
@@ -224,51 +236,12 @@ enum SystemInterfaces {
             if !seen.insert(name).inserted { continue }
 
             let item = LibboxNetworkInterface()
-            item.index = Int32(if_nametoindex(name))
             item.name = name
+            item.index = Int32(if_nametoindex(name))
             item.mtu = 1500
-            item.flags = Int32(entry.ifa_flags)
-            item.type = 0 // Other
-            item.addresses = StringArrayIterator(values: [])
-            item.dnsServer = StringArrayIterator(values: [])
-            item.metered = false
+            item.type = LibboxInterfaceTypeOther
             result.append(item)
         }
         return result
-    }
-}
-
-// MARK: - монитор сети через NWPathMonitor
-
-final class NWPathMonitorInstance {
-    private let monitor = NWPathMonitor()
-    private let listener: LibboxInterfaceUpdateListener?
-    private let queue = DispatchQueue(label: "zefir.tunnel.monitor")
-
-    init(listener: LibboxInterfaceUpdateListener?) {
-        self.listener = listener
-    }
-
-    func start() {
-        monitor.pathUpdateHandler = { [weak self] path in
-            guard let self, let listener = self.listener else { return }
-            let name = Self.interfaceName(of: path)
-            listener.updateDefaultInterface(name, index: 0, isExpensive: path.isExpensive, isConstrained: false)
-        }
-        monitor.start(queue: queue)
-    }
-
-    func stop() {
-        monitor.cancel()
-    }
-
-    private static func interfaceName(of path: NWPath) -> String {
-        if let interface = path.availableInterfaces.first(where: { $0.type == .wifi }) {
-            return interface.name
-        }
-        if let interface = path.availableInterfaces.first(where: { $0.type == .cellular }) {
-            return interface.name
-        }
-        return path.availableInterfaces.first?.name ?? "en0"
     }
 }
