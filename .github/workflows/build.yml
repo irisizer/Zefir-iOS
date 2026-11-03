@@ -37,9 +37,10 @@ jobs:
             -tags "with_gvisor,with_quic,with_wireguard,with_utls" \
             -o /tmp/Libbox.xcframework \
             ./experimental/libbox
-          mkdir -p iosApp/Frameworks
-          rm -rf iosApp/Frameworks/Libbox.xcframework
-          cp -R /tmp/Libbox.xcframework iosApp/Frameworks/
+          mkdir -p "$GITHUB_WORKSPACE/iosApp/Frameworks"
+          rm -rf "$GITHUB_WORKSPACE/iosApp/Frameworks/Libbox.xcframework"
+          cp -R /tmp/Libbox.xcframework "$GITHUB_WORKSPACE/iosApp/Frameworks/"
+          ls -la "$GITHUB_WORKSPACE/iosApp/Frameworks/Libbox.xcframework"
 
       - name: Dump Libbox API (headers)
         if: always()
