@@ -40,9 +40,9 @@ final class ExtensionPlatformInterface: NSObject, LibboxPlatformInterfaceProtoco
             while iterator.hasNext() {
                 guard let prefix = iterator.next() else { break }
                 let item = RouteItem(
-                    address: prefix.address as String? ?? "",
-                    prefix: (prefix.prefix as Int32? ?? 0),
-                    mask: prefix.mask as String? ?? ""
+                    address: prefix.address() as String? ?? "",
+                    prefix: (prefix.prefix() as Int32? ?? 0),
+                    mask: prefix.mask() as String? ?? ""
                 )
                 result.append(item)
             }

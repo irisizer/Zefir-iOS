@@ -49,6 +49,14 @@ jobs:
           HEADER=iosApp/Frameworks/Libbox.xcframework/ios-arm64/Libbox.framework/Headers/Libbox.h
           echo "===== gomobile version ====="
           (cd /tmp/singbox && go list -m golang.org/x/mobile) || true
+          echo "===== xcframework tree ====="
+          find "$GITHUB_WORKSPACE/iosApp/Frameworks/Libbox.xcframework" | head -50
+          echo "===== all headers ====="
+          find "$GITHUB_WORKSPACE/iosApp/Frameworks/Libbox.xcframework" -name "*.h" -o -name "*.modulemap" | while read -r H; do
+            echo "--- $H"; grep -nE "@protocol|^@interface Libbox" "$H" | head -30
+          done
+          HEADER=$(find "$GITHUB_WORKSPACE/iosApp/Frameworks/Libbox.xcframework/ios-arm64" -name "*.h" | head -1)
+          echo "===== using header: $HEADER ====="
           echo "===== header overview ====="
           grep -nE "@protocol|@interface Libbox" "$HEADER" | head -60
           echo "===== PlatformInterface full ====="
